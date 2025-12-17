@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel de Riego</title>
+
+<!-- ApexCharts para el gauge -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f6f6f6;
+    padding: 30px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+
+.title {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* GRID */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+/* SWITCH */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 55px;
+    height: 28px;
+}
+.switch input { display: none; }
+
+.slider {
+    position: absolute;
+    inset: 0;
+    background: #777;
+    border-radius: 30px;
+    transition: .3s;
+}
+.slider:before {
+    content: "";
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .3s;
+}
+
+input:checked + .slider {
+    background: #00C851;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* LED */
+.led {
+    width: 50px;
+    height: 50px;
+    margin: auto;
+    border-radius: 50%;
+    background: #ccc;
+    box-shadow: inset 0 0 8px rgba(0,0,0,.3);
+}
+.led.on {
+    background: #00C851;
+    box-shadow: 0 0 15px #00C851;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HUMEDAD -->
+    <div class="card">
+        <div class="title">HUMEDAD</div>
+        <div id="gauge"></div>
+    </div>
+
+    <!-- CONTROLES -->
+    <div class="grid">
+
+        <!-- BOMBA MANUAL -->
+        <div class="card">
+            <div class="title">BOMBA</div>
+            <label class="switch">
+                <input type="checkbox" id="bombaManual" onclick="controlBomba()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <!-- LED ESTADO -->
+        <div class="card">
+            <div class="title">BOMBA</div>
+            <div id="ledBomba" class="led"></div>
+        </div>
+
+        <!-- MODO AUTO -->
+        <div class="card">
+            <div class="title">Auto</div>
+            <label class="switch">
+                <input type="checkbox" id="modoAuto" onclick="controlAuto()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const TOKEN = "pCgIivxYyRfzvFNNMiujFd15UVnoGZMy";
+
+/* ------------------ GAUGE ------------------ */
+const gauge = new ApexCharts(document.querySelector("#gauge"), {
+    series: [0],
+    chart: { type: 'radialBar', height: 280 },
+    plotOptions: {
+        radialBar: {
+            startAngle: -135,
+            endAngle: 135,
+            dataLabels: {
+                name: { show: false },
+                value: { fontSize: '32px' }
+            }
+        }
+    }
+});
+gauge.render();
+
+/* ------------------ HUMEDAD (V1) ------------------ */
+function leerHumedad() {
+    fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1`)
+        .then(res => res.json())
+        .then(valor => {
+            gauge.updateSeries([parseInt(valor)]);
+        });
+}
+
+/* ------------------ BOMBA MANUAL (V0) ------------------ */
+function controlBomba() {
+    const estado = document.getElementById("bombaManual").checked ? 1 : 0;
+    fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V0=${estado}`);
+}
+
+/* ------------------ MODO AUTO (V2) ------------------ */
+function controlAuto() {
+    const estado = document.getElementById("modoAuto").checked ? 1 : 0;
+    fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V2=${estado}`);
+}
+
+/* ------------------ LED ESTADO (V3) ------------------ */
+function leerEstadoLED() {
+    fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V3`)
+        .then(res => res.json())
+        .then(valor => {
+            const estado = parseInt(valor);
+            document.getElementById("ledBomba").classList.toggle("on", estado === 1);
+        });
+}
+
+/* ------------------ SINCRONIZACIÓN ------------------ */
+setInterval(() => {
+    leerHumedad();
+    leerEstadoLED();
+}, 2000);
+</script>
+
+</body>
+</html>
